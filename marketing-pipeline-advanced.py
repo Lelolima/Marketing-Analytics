@@ -2,12 +2,17 @@ import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
 import logging
-from datetime import datetime
 import os
 import json
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+def _to_builtin(obj):
+    if isinstance(obj, np.generic):
+        return obj.item()
+    raise TypeError(f"Tipo não serializável: {type(obj)}")
+
 
 class MarketingAnalyticsPipeline:
     def __init__(self, config_path=None):
@@ -57,7 +62,7 @@ class MarketingAnalyticsPipeline:
         }
         
         if config_path and os.path.exists(config_path):
-            with open(config_path, 'r') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 user_config = json.load(f)
                 default_config.update(user_config)
         
@@ -126,7 +131,7 @@ class MarketingAnalyticsPipeline:
             df['score_potencial'] = (
                 (df['recursos_disponiveis'].astype(int) * 0.4) +
                 (df['valor_investimento'].apply(lambda x: min(x/5000, 1)) * 0.4) +
-                (1 - (df['tempo_decisao_dias'] / 30) * 0.2)
+                ((1 - df['tempo_decisao_dias'] / 30) * 0.2)
             )
             
             # Normalização de valores numéricos
@@ -179,19 +184,21 @@ class MarketingAnalyticsPipeline:
         Gera visualizações dos dados
         """
         # Configuração visual
-        plt.style.use('seaborn')
+        plt.style.use('seaborn-v0_8')  # nome 'seaborn' removido no matplotlib 3.6
         
         # Distribuição de scores
         plt.figure(figsize=(10, 6))
         sns.histplot(data=df, x='score_potencial', hue='segmento')
         plt.title('Distribuição de Scores por Segmento')
         plt.savefig('output/score_distribution.png')
+        plt.close()
         
         # Relação idade vs valor
         plt.figure(figsize=(10, 6))
         sns.scatterplot(data=df, x='idade', y='valor_investimento', hue='segmento')
         plt.title('Idade vs Valor de Investimento')
         plt.savefig('output/age_value_relation.png')
+        plt.close()
 
     def load_data(self, df):
         """
@@ -205,8 +212,9 @@ class MarketingAnalyticsPipeline:
             
             # Exportar análises
             analysis = self.analyze_data(df)
-            with open('output/analysis_report.json', 'w') as f:
-                json.dump(analysis, f, indent=4)
+            with open('output/analysis_report.json', 'w', encoding='utf-8') as f:
+                # default=_to_builtin: contagens do pandas são numpy.int64 (não serializáveis)
+                json.dump(analysis, f, indent=4, ensure_ascii=False, default=_to_builtin)
             
             self.logger.info("Dados carregados com sucesso")
             

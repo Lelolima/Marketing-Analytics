@@ -1,48 +1,61 @@
 # Marketing-Analytics
 
-Este projeto implementa uma pipeline ETL (Extract, Transform, Load) em Python para análise de dados de leads em um contexto de marketing. Ele simula as etapas de extração, transformação e carregamento de dados, com foco em categorizar perfis, identificar padrões e fornecer insights relevantes para decisões estratégicas.
+Pipeline ETL em Python (`marketing-pipeline-advanced.py`) para análise de leads de marketing: extrai, transforma,
+segmenta, grava em SQLite e exporta um relatório JSON e gráficos.
 
-📜 Descrição do Projeto
-A análise de leads é uma parte crucial para otimizar campanhas de marketing e personalizar abordagens. Este projeto automatiza o processamento desses dados usando um fluxo ETL que abrange:
+> **Atenção: os dados são simulados.** `extract_data()` gera 100 leads aleatórios com `numpy` a cada execução
+> (sem semente fixa). As chaves `data_source` e o parâmetro `source` existem na configuração/assinatura, mas **não são
+> usados**: nenhum CSV ou API real é lido.
 
-Extração: Simulação de coleta de dados sobre perfis, idades e preferências de pagamento.
-Transformação:
-Categorização de perfis em grupos: Transição de carreira, Estudantes, e Sem experiência.
-Segmentação etária em faixas: 18-25, 25-35, 35-55.
-Identificação de desafios, como insegurança profissional e falta de experiência.
-Classificação de objetivos, como melhoria salarial e mudança de área.
-Carregamento: Persistência dos dados processados em um banco de dados SQLite para análises posteriores.
-📊 Análises Realizadas
-Categorização de Leads: Identifica os principais grupos para personalização de campanhas.
-Segmentação Etária: Analisa a distribuição de idades e concentrações demográficas.
-Aspectos Financeiros: Mapeia recursos disponíveis e preferências de pagamento.
-Identificação de Desafios e Objetivos: Reconhece barreiras e metas dos leads.
-🚀 Como Executar
-Clone o repositório:
+## Etapas implementadas
 
-bash
-Copiar código
-git clone https://github.com/Lelolima/marketing-analytics.git
-cd marketing-analytics
-Instale os pacotes necessários:
+- **Extract**: 100 leads simulados (idade, perfil, recursos disponíveis, preferência de pagamento, valor de
+  investimento, dias até a decisão).
+- **Transform**:
+  - código de categoria por perfil (`profile_mapping`: Transição de carreira→C1, Estudante→D1,
+    Sem experiência→E1, Profissional→P1);
+  - faixa etária: 18-25, 26-35, 36-45, 46-60;
+  - `score_potencial` (0 a 1) = 0,4·recursos + 0,4·min(valor/5000, 1) + 0,2·(1 − dias/30);
+  - segmento: Premium (≥ 0,8), Intermediário (≥ 0,5), Básico;
+  - padronização (`StandardScaler`) de `valor_investimento` e `tempo_decisao_dias`.
+- **Load**: tabela `leads_processed` no banco (`sqlite:///marketing_analytics.db` por padrão), relatório
+  `output/analysis_report.json` e gráficos `output/score_distribution.png` e `output/age_value_relation.png`.
 
-bash
-Copiar código
-pip install pandas sqlalchemy
-Execute o script:
+Não há identificação de "desafios" ou "objetivos" dos leads (citados em versões anteriores do README).
 
-bash
-Copiar código
-python etl_pipeline_code.py
-🛠️ Tecnologias Utilizadas
-Python: Linguagem de programação.
-Pandas: Manipulação e análise de dados.
-SQLAlchemy: Conexão e persistência de dados em banco de dados.
-SQLite: Banco de dados relacional leve.
-📈 Resultados Esperados
-Após a execução do pipeline, os dados transformados estarão disponíveis em um banco de dados, prontos para análises e geração de relatórios.
+## Instalação
 
-📚 Próximos Passos
-Integração com um dashboard em Power BI para visualização de insights.
-Conexão com APIs externas para dados reais.
-Automação de tarefas com agendadores (ex.: Apache Airflow).
+```bash
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt          # execução
+pip install -r requirements-dev.txt      # + testes e lint
+```
+
+## Execução
+
+```bash
+python marketing-pipeline-advanced.py
+```
+
+Gera `marketing_pipeline.log`, `marketing_analytics.db` e a pasta `output/` no diretório atual.
+
+### Configuração
+
+Não há variáveis de ambiente nem segredos. É possível passar um JSON de configuração ao construtor
+(`MarketingAnalyticsPipeline("config.json")`) para sobrescrever `database_url`, `export_path` ou `profile_mapping`.
+Observação: `export_path` também não é usado hoje (a saída vai sempre para `output/`).
+
+## Testes e lint
+
+```bash
+ruff check .
+pytest -q tests
+```
+
+CI em `.github/workflows/ci.yml` (lint, compilação e testes).
+
+## Relação com outros repositórios
+
+`Advanced-Marketing-ML-Pipeline` trata do mesmo domínio (perfis de leads de cursos) com modelos de ML sobre dados
+sintéticos. Os repositórios se sobrepõem, mas são independentes.
